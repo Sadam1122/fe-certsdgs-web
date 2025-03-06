@@ -65,7 +65,7 @@ export default function PaperSubmissionForm({ onPaperSubmitted }: PaperSubmissio
       let response: ApiResponse
 
       try {
-        const apiResponse = await fetch("http://localhost:3900/model/paper", {
+        const apiResponse = await fetch("https://api.sdgstelkomuniversity.my.id/model/paper", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
