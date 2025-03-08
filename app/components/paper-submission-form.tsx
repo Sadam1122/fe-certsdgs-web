@@ -95,7 +95,7 @@ export default function PaperSubmissionForm({ onPaperSubmitted }: PaperSubmissio
     
       try {
         // Try to fetch from the API
-        const apiResponse = await fetch("http://127.0.0.1:3900/model/paper", {
+        const apiResponse = await fetch("https://api.sdgstelkomuniversity.my.id/model/paper", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
