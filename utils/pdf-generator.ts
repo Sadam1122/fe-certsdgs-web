@@ -66,20 +66,42 @@ export const generateCertificatePDF = async (paper: Paper) => {
   doc.setLineWidth(0.5)
   // Sisakan margin 20 mm di setiap sisi (boleh diatur sesuai selera)
   doc.roundedRect(20, 20, pageWidth - 40, pageHeight - 40, 3, 3, "S")
-
   try {
-    // Tambah logo Telkom University di kiri atas
-    const teluImg = await loadImage("/images/telu.png")
-    doc.addImage(teluImg, "PNG", 30, 25, 50, 25)
-
-    // Tambah logo SDGs di kanan atas
-    const sdgsImg = await loadImage("/images/sdgs.png")
-    // 70 adalah lebar gambar (disesuaikan), 25 adalah tinggi
-    doc.addImage(sdgsImg, "PNG", pageWidth - 80, 25, 50, 25)
+    // Muat gambar TELU (kiri atas)
+    const teluImg = await loadImage("/images/telu.png");
+  
+    // Ambil ukuran asli gambar TELU
+    const originalTeluWidth = teluImg.width;
+    const originalTeluHeight = teluImg.height;
+  
+    // Tentukan lebar tampilan, hitung tinggi agar proporsional
+    const teluMaxWidth = 50; // Lebar maksimum yang diizinkan
+    const teluScale = teluMaxWidth / originalTeluWidth;
+    const teluDisplayWidth = originalTeluWidth * teluScale;
+    const teluDisplayHeight = originalTeluHeight * teluScale;
+  
+    // Tambah gambar TELU di kiri atas
+    doc.addImage(teluImg, "PNG", 30, 20, teluDisplayWidth, teluDisplayHeight);
+  
+    // Muat gambar SDGs (kanan atas)
+    const sdgsImg = await loadImage("/images/sdgs.png");
+  
+    // Ambil ukuran asli gambar SDGs
+    const originalSdgsWidth = sdgsImg.width;
+    const originalSdgsHeight = sdgsImg.height;
+  
+    // Tentukan lebar tampilan, hitung tinggi agar proporsional
+    const sdgsMaxWidth = 50;
+    const sdgsScale = sdgsMaxWidth / originalSdgsWidth;
+    const sdgsDisplayWidth = originalSdgsWidth * sdgsScale;
+    const sdgsDisplayHeight = originalSdgsHeight * sdgsScale;
+  
+    // Tambah gambar SDGs di kanan atas, sejajar dengan gambar TELU
+    doc.addImage(sdgsImg, "PNG", pageWidth - sdgsDisplayWidth - 30, 22, sdgsDisplayWidth, sdgsDisplayHeight);
   } catch (error) {
-    console.error("Error loading logos:", error)
+    console.error("Error loading logos:", error);
   }
-
+  
   // Judul sertifikat
   doc.setTextColor(0, 102, 204)
   doc.setFont("helvetica", "bold")

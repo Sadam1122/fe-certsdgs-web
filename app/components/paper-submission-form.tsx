@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import type { ApiResponse } from "@/types/paper"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
@@ -9,27 +8,39 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
-import { motion } from "framer-motion"
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { 
+  AlertCircle, 
+  CheckCircle2, 
+  Loader2, 
+  BookText, 
+  Users, 
+  Calendar, 
+  Database, 
+  Send,
+  FileText 
+} from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue, 
+} from "@/app/components/ui/select"
 
 interface PaperSubmissionFormProps {
   onPaperSubmitted: (response: ApiResponse) => void
 }
 
-// Mock data for when the API is not available
-const MOCK_RESPONSE: ApiResponse = {
-  data: {
-    Judul:
-      "Adaptasi Interaksi Lintas Budaya (Studi Kasus Pada Mahasiswa Indonesia Yang Menempuh Pendidikan Tinggi Di Prancis)",
-    Penulis: "Bagaskara Ade Prasetyo, Arie Prasetio",
-    Tahun: "2018",
-    Abstrak:
-      "seseorang yang menjalani pendidikan tinggi diluar negara asalnya kemungkinan besar akan menghadapi kebudayaan yang berbeda beragam ataupun bisa saja bertolak belakang dari kebudayaan negara asalnya penelitian ini bertujuan untuk mengetahui bagaimana strategi adaptasi interaksi strategi adaptasi budaya dan strategi yang dilakukan dalam menghadapi permasalahan saat berinteraksi maupun saat sedang beradaptasi dengan perbedaan budaya pada mahasiswa asal indonesia yang menempuh pendidikan tinggi di prancis penelitian ini menggunakan metode penelitian kualitatif dan pendekatan studi kasus yang berdasarkan paradigma konstruktivisme teknik pengumpulan data yang digunakan adalah wawancara mendalam observasi dan studi pustaka hasil penelitian ini mengungkapkan bahwa strategi adaptasi budaya strategi adaptasi interaksi dan strategi mengatasi permasalahan yang ada dalam adaptasi dan interaksi lintas budaya pada mahasiswa indonesia yang menempuh pendidikan tinggi di prancis beragam dan berbeda satu sama lain dan mahasiswa asal indonesia di prancis dapat menghadapi berbagai permasalahan dengan strategi mereka masing masing untuk tetap bertahan dalam menjalani kehidupan dan pendidikan tingginya di prancis",
-    Source: "Oplib",
-    Sdgs: ["SDGS3", "SDGS4"],
-  },
-}
+// Generate years for dropdown (last 30 years)
+const generateYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = 0; i < 30; i++) {
+    years.push(currentYear - i);
+  }
+  return years;
+};
 
 export default function PaperSubmissionForm({ onPaperSubmitted }: PaperSubmissionFormProps) {
   const [formData, setFormData] = useState({
@@ -42,6 +53,9 @@ export default function PaperSubmissionForm({ onPaperSubmitted }: PaperSubmissio
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [errorType, setErrorType] = useState<"general" | "duplicate" | null>(null)
+  
+  const yearOptions = generateYearOptions();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -51,64 +65,111 @@ export default function PaperSubmissionForm({ onPaperSubmitted }: PaperSubmissio
     }))
 
     // Clear error when user starts typing again
-    if (error) setError(null)
+    if (error) {
+      setError(null)
+      setErrorType(null)
+    }
+  }
+
+  const handleYearChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      Tahun: value,
+    }))
+    
+    // Clear error when user makes a selection
+    if (error) {
+      setError(null)
+      setErrorType(null)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    setErrorType(null)
     setSuccess(false)
 
-    try {
-      // Try to fetch from the API
-      let response: ApiResponse
 
+    
       try {
-        const apiResponse = await fetch("https://api.sdgstelkomuniversity.my.id/model/paper", {
+        // Try to fetch from the API
+        const apiResponse = await fetch("http://127.0.0.1:3900/model/paper", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(formData),
         })
-
+    
+        const responseData = await apiResponse.json()
+        console.log("API Response:", responseData)
+        
         if (!apiResponse.ok) {
-          throw new Error(`API responded with status: ${apiResponse.status}`)
+          if (responseData.error && responseData.error.includes("already exists")) {
+            setErrorType("duplicate")
+            throw new Error("Paper dengan judul ini sudah ada dalam database")
+          } else {
+            setErrorType("general")
+            throw new Error(`Gagal mengirim data: ${responseData.error || "Terjadi kesalahan"}`)
+          }
         }
-
-        response = await apiResponse.json()
-        console.log("API response:", response) // Log the actual API response
-      } catch (fetchError) {
-        console.warn("API fetch failed, using mock data:", fetchError)
-
-        // Use mock data if the API is not available
-        response = MOCK_RESPONSE
-        console.log("Using mock data:", response) // Log the mock data
+    
+        // Periksa format aktual API yang memiliki data dan message
+        if (responseData.data && responseData.message === "Data added successfully") {
+          setSuccess(true)
+          
+          // Panggil callback dengan data yang sudah sesuai format
+          onPaperSubmitted(responseData);
+          
+          // Optional: Reset form
+          setFormData({
+            Judul: "",
+            Penulis: "",
+            Tahun: "",
+            Source: "",
+            Abstrak: "",
+          })
+        } else {
+          // Format respons tidak sesuai yang diharapkan
+          console.error("Unexpected API response format:", responseData)
+          setErrorType("general")
+          throw new Error("Respons API tidak sesuai format yang diharapkan")
+        }
+      } catch (error: unknown) { 
+        console.error("Error submitting paper:", error)
+        // Pastikan error adalah instance dari Error sebelum mengakses message
+        if (error instanceof Error) {
+          setError(error.message)
+        } else {
+          setError("Gagal mengirim paper. Silakan coba lagi.")
+        }
+      } finally {
+        setIsLoading(false)
       }
-
-      setSuccess(true)
-      onPaperSubmitted(response)
-    } catch (error) {
-      console.error("Error submitting paper:", error)
-      setError("Failed to submit paper. Please try again.")
-    } finally {
-      setIsLoading(false)
     }
-  }
 
   return (
-    <Card className="border-primary/20 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
+    <Card className="border-primary/20 shadow-lg overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-primary/10">
         <CardTitle className="text-2xl flex items-center gap-2">
           <span className="inline-block w-3 h-8 bg-primary rounded-sm"></span>
           Submit Paper Data
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
-        {error && (
+        {errorType === "duplicate" && (
+          <Alert variant="destructive" className="mb-6 bg-amber-50 border-amber-200">
+            <AlertCircle className="h-5 w-5 text-amber-600" />
+            <AlertTitle className="text-amber-800">Duplikat Terdeteksi</AlertTitle>
+            <AlertDescription className="text-amber-700">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {errorType === "general" && (
           <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-5 w-5" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -116,140 +177,128 @@ export default function PaperSubmissionForm({ onPaperSubmitted }: PaperSubmissio
 
         {success && (
           <Alert className="mb-6 bg-green-50 border-green-200">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800">Success</AlertTitle>
-            <AlertDescription className="text-green-700">Your paper has been successfully submitted!</AlertDescription>
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <AlertTitle className="text-green-800">Berhasil</AlertTitle>
+            <AlertDescription className="text-green-700">
+              Paper berhasil dikirim dan diproses oleh sistem!
+            </AlertDescription>
           </Alert>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <motion.div
-            className="space-y-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Label htmlFor="Judul" className="text-base">
-              Judul
+          <div className="space-y-2">
+            <Label htmlFor="Judul" className="text-base flex items-center gap-2">
+              <BookText className="h-4 w-4 text-primary" />
+              Judul Paper
             </Label>
-            <motion.div whileFocus={{ scale: 1.02 }} className="transition-all duration-200">
-              <Input
-                id="Judul"
-                name="Judul"
-                value={formData.Judul}
-                onChange={handleChange}
-                required
-                className="border-primary/20 focus:border-primary transition-all duration-300"
-              />
-            </motion.div>
-          </motion.div>
+            <Input
+              id="Judul"
+              name="Judul"
+              value={formData.Judul}
+              onChange={handleChange}
+              required
+              placeholder="Masukkan judul paper penelitian"
+              className="border-primary/20 focus:border-primary focus:ring-primary/30 transition-colors"
+            />
+          </div>
 
-          <motion.div
-            className="space-y-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Label htmlFor="Penulis" className="text-base">
+          <div className="space-y-2">
+            <Label htmlFor="Penulis" className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
               Penulis
             </Label>
-            <motion.div whileFocus={{ scale: 1.02 }} className="transition-all duration-200">
-              <Input
-                id="Penulis"
-                name="Penulis"
-                value={formData.Penulis}
-                onChange={handleChange}
-                required
-                className="border-primary/20 focus:border-primary transition-all duration-300"
-              />
-            </motion.div>
-          </motion.div>
+            <Input
+              id="Penulis"
+              name="Penulis"
+              value={formData.Penulis}
+              onChange={handleChange}
+              required
+              placeholder="Nama penulis (pisahkan dengan koma jika lebih dari satu)"
+              className="border-primary/20 focus:border-primary focus:ring-primary/30 transition-colors"
+            />
+          </div>
 
-          <motion.div
-            className="space-y-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Label htmlFor="Tahun" className="text-base">
-              Tahun
+          <div className="space-y-2">
+            <Label htmlFor="Tahun" className="text-base flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              Tahun Publikasi
             </Label>
-            <motion.div whileFocus={{ scale: 1.02 }} className="transition-all duration-200">
-              <Input
-                id="Tahun"
-                name="Tahun"
-                value={formData.Tahun}
-                onChange={handleChange}
-                required
-                className="border-primary/20 focus:border-primary transition-all duration-300"
-              />
-            </motion.div>
-          </motion.div>
+            <Select
+              onValueChange={handleYearChange}
+              value={formData.Tahun}
+            >
+              <SelectTrigger 
+                className="border-primary/20 focus:border-primary focus:ring-primary/30 transition-colors"
+              >
+                <SelectValue placeholder="Pilih tahun publikasi" />
+                </SelectTrigger>
+                <SelectContent 
+                  className="max-h-72 bg-gradient-to-b from-gray-100 to-gray-300 text-black border border-gray-400 shadow-xl rounded-lg"
+                  position="popper"
+                >
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <motion.div
-            className="space-y-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Label htmlFor="Source" className="text-base">
+          <div className="space-y-2">
+            <Label htmlFor="Source" className="text-base flex items-center gap-2">
+              <Database className="h-4 w-4 text-primary" />
               Source
             </Label>
-            <motion.div whileFocus={{ scale: 1.02 }} className="transition-all duration-200">
-              <Input
-                id="Source"
-                name="Source"
-                value={formData.Source}
-                onChange={handleChange}
-                required
-                className="border-primary/20 focus:border-primary transition-all duration-300"
-              />
-            </motion.div>
-          </motion.div>
+            <Input
+              id="Source"
+              name="Source"
+              value={formData.Source}
+              onChange={handleChange}
+              required
+              placeholder="Sumber publikasi (jurnal, konferensi, dll)"
+              className="border-primary/20 focus:border-primary focus:ring-primary/30 transition-colors"
+            />
+          </div>
 
-          <motion.div
-            className="space-y-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Label htmlFor="Abstrak" className="text-base">
+          <div className="space-y-2">
+            <Label htmlFor="Abstrak" className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
               Abstrak
             </Label>
-            <motion.div whileFocus={{ scale: 1.02 }} className="transition-all duration-200">
-              <Textarea
-                id="Abstrak"
-                name="Abstrak"
-                value={formData.Abstrak}
-                onChange={handleChange}
-                rows={5}
-                required
-                className="border-primary/20 focus:border-primary transition-all duration-300 resize-none"
-              />
-            </motion.div>
-          </motion.div>
+            <Textarea
+              id="Abstrak"
+              name="Abstrak"
+              value={formData.Abstrak}
+              onChange={handleChange}
+              rows={5}
+              required
+              placeholder="Masukkan abstrak paper penelitian"
+              className="border-primary/20 focus:border-primary focus:ring-primary/30 transition-colors"
+            />
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Button type="submit" className="w-full h-12 text-lg font-medium" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Submit"
-              )}
-            </Button>
-          </motion.div>
+          <div className="pt-4">
+          <Button 
+  type="submit" 
+  className="w-full h-12 text-base font-medium bg-green-500 hover:bg-green-600 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+  disabled={isLoading}
+>
+  {isLoading ? (
+    <>
+      <Loader2 className="h-5 w-5 animate-spin" />
+      Memproses Data...
+    </>
+  ) : (
+    <>
+      <Send className="h-5 w-5" />
+      Kirim Paper
+    </>
+  )}
+</Button>
+          </div>
         </form>
       </CardContent>
     </Card>
   )
 }
-

@@ -53,7 +53,7 @@ export default function SdgsHeader() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.5 }}
           >
-            Pemetaan 17 Bidang Tujuan Pembangunan Berkelanjutan (SDGs) Dosen Telkom University
+            Pemetaan 17 Bidang Tujuan Pembangunan Berkelanjutan (SDGs)
           </motion.p>
         </motion.div>
       </div>
