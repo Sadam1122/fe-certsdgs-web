@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export default function SdgsHeader() {
   return (
-    <div className="relative bg-primary text-black overflow-hidden">
+    <div className="relative  text-black overflow-hidden">
       {/* Background Overlay */}
       <div className="absolute inset-0 z-0 opacity-10">
         <div className="absolute inset-0 bg-repeat opacity-20"></div>
